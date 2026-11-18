@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Необычная Змейка</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #0d0d1a;
+    color: #fff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    background: radial-gradient(circle at 50% 40%, #1a1a35, #0d0d1a);
+  }
+  .screen.active { display: flex; }
+  h1 {
+    font-size: 2.2em;
+    margin-bottom: 25px;
+    background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  button {
+    font-size: 1.2em;
+    padding: 14px 40px;
+    margin: 8px;
+    border: 2px solid #48dbfb;
+    border-radius: 14px;
+    background: rgba(72, 219, 251, 0.1);
+    color: #48dbfb;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: bold;
+  }
+  button:hover { background: rgba(72, 219, 251, 0.3); transform: scale(1.05); }
+  button:active { transform: scale(0.97); }
+  .sub { font-size: 1.1em; margin-bottom: 30px; opacity: 0.85; }
+  /* Меню */
+  #menuScreen h1 { margin-bottom: 40px; }
+  #menuScreen button { font-size: 1.5em; padding: 18px 60px; margin: 12px; }
+  /* Скины */
+  #skinsScreen { overflow-y: auto; }
+  .color-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    max-width: 500px;
+    margin: 15px 0;
+  }
+  .color-swatch {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .color-swatch.selected { border-color: #fff; transform: scale(1.15); }
+  .hat-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin: 15px 0;
+  }
+  .hat-option {
+    width: 60px; height: 60px;
+    border-radius: 12px;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 32px;
+    background: rgba(255,255,255,0.08);
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hat-option.selected { border-color: #48dbfb; background: rgba(72,219,251,0.2); }
+  .back-btn { position: absolute; top: 20px; left: 20px; font-size: 1.2em; padding: 8px 20px; }
+  /* Игровой экран */
+  #gameScreen { padding: 0; background: none; }
+  #gameCanvas { display: block; touch-action: none; }
+  /* HUD */
+  #hud {
+    position: absolute;
+    top: 10px; left: 10px;
+    font-size: 16px;
+    pointer-events: none;
+    text-shadow: 1px 1px 3px #000;
+    z-index: 10;
+  }
+  #hud div { margin-bottom: 4px; }
+  #leaderboard {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-size: 14px;
+    text-align: right;
+    pointer-events: none;
+    text-shadow: 1px 1px 3px #000;
+    z-index: 10;
+    background: rgba(0,0,0,0.25);
+    padding: 8px 12px;
+    border-radius: 10px;
+  }
+  /* Мобильное управление */
+  #joyBase {
+    position: absolute;
+    bottom: 30px; left: 30px;
+    width: 130px; height: 130px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.2);
+    display: none;
+    z-index: 20;
+  }
+  #joyKnob {
+    position: absolute;
+    width: 55px; height: 55px;
+    border-radius: 50%;
+    background: rgba(72,219,251,0.6);
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  #boostBtnMobile {
+    position: absolute;
+    bottom: 45px; right: 30px;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: rgba(255,107,107,0.25);
+    border: 3px solid rgba(255,107,107,0.7);
+    color: #ff6b6b;
+    font-size: 15px;
+    font-weight: bold;
+    display: none;
+    z-index: 20;
+    justify-content: center;
+    align-items: center;
+  }
+  /* Game over / pause */
+  #overlay {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(13,13,26,0.88);
+    z-index: 50;
+    text-align: center;
+    padding: 20px;
+  }
+  #overlay.active { display: flex; }
+  #overlay h2 { font-size: 2em; margin-bottom: 15px; }
+  #overlay .stat { font-size: 1.2em; margin: 6px 0; }
+  #overlay .stats-box { margin: 15px 0 25px; }
+  .rank-badge { font-size: 1.1em; margin-top: 10px; opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<!-- ЭКРАН 1: выбор платформы -->
+<div class="screen active" id="platformScreen">
+  <h1>🐍 Необычная Змейка</h1>
+  <div class="sub">Где ты играешь?</div>
+  <button onclick="choosePlatform('pc')">💻 Компьютер</button>
+  <button onclick="choosePlatform('mobile')">📱 Телефон</button>
+</div>
+
+<!-- ЭКРАН 2: меню -->
+<div class="screen" id="menuScreen">
+  <h1>Необычная Змейка</h1>
+  <button onclick="startGame()">🎮 Играть</button>
+  <button onclick="openSkins()">🎨 Скины</button>
+</div>
+
+<!-- ЭКРАН 3: скины -->
+<div class="screen" id="skinsScreen">
+  <button class="back-btn" onclick="backToMenu()">← Назад</button>
+  <h1 style="font-size:1.6em;">Скины</h1>
+  <div class="sub" style="margin-bottom:8px; font-size:1em;">Цвет змейки</div>
+  <div class="color-grid" id="colorGrid"></div>
+  <div class="sub" style="margin:15px 0 8px; font-size:1em;">Шапочка</div>
+  <div class="hat-grid" id="hatGrid"></div>
+</div>
+
+<!-- ЭКРАН 4: игра -->
+<div class="screen" id="gameScreen">
+  <canvas id="gameCanvas"></canvas>
+  <div id="hud">
+    <div id="hudScore">Очки: 0</div>
+    <div id="hudLength" style="font-size:14px; opacity:0.7;">Длина: 10</div>
+  </div>
+  <div id="leaderboard"></div>
+  <div id="joyBase"><div id="joyKnob"></div></div>
+  <div id="boostBtnMobile">🚀<br>Ускор.</div>
+  <div id="overlay">
+    <h2 id="overlayTitle">Конец</h2>
+    <div class="stats-box">
+      <div class="stat" id="ovScore">Очки: 0</div>
+      <div class="stat" id="ovLength">Длина: 10</div>
+      <div class="stat" id="ovKills">Убийств: 0</div>
+      <div class="rank-badge" id="ovRank"></div>
+    </div>
+    <button onclick="restartGame()">🔄 Заново</button>
+    <button onclick="backToMenuFromGame()">🏠 В меню</button>
+  </div>
+</div>
+
+<script>
+// ============ СОСТОЯНИЕ ============
+let platform = 'pc'; // 'pc' | 'mobile'
+let selectedColor = '#48dbfb';
+let selectedHat = 0; // 0 = без шапки, 1..5 = шапки
+
+const HATS = [
+  { id: 0, emoji: '🚫', name: 'Без шапки' },
+  { id: 1, emoji: '🎩', name: 'Цилиндр', color: '#222' },
+  { id: 2, emoji: '👑', name: 'Корона', color: '#ffd700' },
+  { id: 3, emoji: '🎓', name: 'Кепка', color: '#1a1a1a' },
+  { id: 4, emoji: '🎀', name: 'Бантик', color: '#ff6b9d' },
+  { id: 5, emoji: '🧢', name: 'Ушанка', color: '#8B4513' }
+];
+
+const COLORS = [
+  '#ff6b6b','#feca57','#48dbfb','#ff9ff3','#1dd1a1',
+  '#54a0ff','#5f27cd','#ff9f43','#00d2d3','#ee5253',
+  '#c8d6e5','#8395a7','#576574','#222f3e','#f368e0',
+  '#ff3838','#7bed9f','#70a1ff','#eccc68','#a4b0be',
+  '#2ed573','#ff4757','#3742fa','#ffa502','#ff6348'
+];
+
+// ============ ИНИЦИАЛИЗАЦИЯ ЭКРАНОВ ============
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function choosePlatform(p) {
+  platform = p;
+  showScreen('menuScreen');
+}
+
+function openSkins() {
+  buildSkinsUI();
+  showScreen('skinsScreen');
+}
+function backToMenu() { showScreen('menuScreen'); }
+
+function buildSkinsUI() {
+  const colorGrid = document.getElementById('colorGrid');
+  colorGrid.innerHTML = '';
+  COLORS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'color-swatch' + (c === selectedColor ? ' selected' : '');
+    d.style.background = c;
+    d.onclick = () => { selectedColor = c; buildSkinsUI(); };
+    colorGrid.appendChild(d);
+  });
+  const hatGrid = document.getElementById('hatGrid');
+  hatGrid.innerHTML = '';
+  HATS.forEach(h => {
+    const d = document.createElement('div');
+    d.className = 'hat-option' + (h.id === selectedHat ? ' selected' : '');
+    d.textContent = h.emoji;
+    d.onclick = () => { selectedHat = h.id; buildSkinsUI(); };
+    hatGrid.appendChild(d);
+  });
+}
+
+// ============ ИГРОВАЯ ЛОГИКА ============
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, WORLD_W, WORLD_H;
+let camera = { x: 0, y: 0 };
+let game = null;
+let animationId = null;
+let lastTime = 0;
+let paused = false;
+
+const GRID = 24;           // размер сегмента (визуально)
+const BOT_COUNT = 15;
+const TARGET_FPS = 60;
+
+// радиусы точек
+const FOOD_RADII = [5, 8, 12, 16, 22];
+const FOOD_SCORES = [1, 2, 4, 7, 11];
+
+// состояния игры
+function createGame() {
+  WORLD_W = 2400;
+  WORLD_H = 2400;
+  const g = {
+    time: 0,
+    floorHue: Math.random() * 360,
+    floorTimer: 0,
+    player: null,
+    bots: [],
+    foods: [],
+    particles: [],
+    deadBodies: [], // выпавшие точки при смерти
+    playerKills: 0,
+    isDead: false,
+    playerName: 'Ты',
+    keys: {},
+    mouse: { x: 0, y: 0, active: false },
+    mobileDir: { x: 0, y: 0 }, // нормализованное направление джойстика
+    boost: false
+  };
+
+  // игрок
+  g.player = makeSnake(
+    WORLD_W / 2, WORLD_H / 2,
+    selectedColor,
+    selectedHat,
+    false,
+    'Ты',
+    10
+  );
+  g.player.isPlayer = true;
+
+  // еда
+  for (let i = 0; i < 220; i++) {
+    g.foods.push(makeFood());
+  }
+
+  // боты
+  spawnBots(g);
+
+  return g;
+}
+
+function makeFood() {
+  const idx = weightedFoodIndex();
+  const r = FOOD_RADII[idx];
+  return {
+    x: Math.random() * (WORLD_W - 100) + 50,
+    y: Math.random() * (WORLD_H - 100) + 50,
+    r: r,
+    score: FOOD_SCORES[idx],
+    color: randomRainbow(),
+    wobble: Math.random() * Math.PI * 2
+  };
+}
+
+function weightedFoodIndex() {
+  // маленьких больше, больших меньше
+  const r = Math.random();
+  if (r < 0.45) return 0;
+  if (r < 0.72) return 1;
+  if (r < 0.88) return 2;
+  if (r < 0.96) return 3;
+  return 4;
+}
+
+function randomRainbow() {
+  return `hsl(${Math.random()*360}, 90%, 60%)`;
+}
+
+function makeSnake(x, y, color, hat, isBot, name, startLen) {
+  const angle = Math.random() * Math.PI * 2;
+  const segs = [];
+  for (let i = 0; i < startLen; i++) {
+    segs.push({
+      x: x - Math.cos(angle) * i * (GRID * 0.55),
+      y: y - Math.sin(angle) * i * (GRID * 0.55)
+    });
+  }
+  return {
+    x, y,
+    angle,
+    targetAngle: angle,
+    color,
+    hat,
+    isBot,
+    name,
+    segments: segs,
+    length: startLen,
+    score: 0,
+    speed: isBot ? 2.2 : 2.8,
+    baseSpeed: isBot ? 2.2 : 2.8,
+    boosting: false,
+    alive: true,
+    personality: isBot ? (Math.random() < 0.3 ? 'aggressive' : 'peaceful') : 'player',
+    skill: 1, // 0..1 для ботов
+    thinkTimer: 0,
+    targetFood: null,
+    aiWander: Math.random() * Math.PI * 2,
+    respawnTimer: 0,
+    dead: false
+  };
+}
+
+function spawnBots(g) {
+  g.bots = [];
+  for (let i = 0; i < BOT_COUNT; i++) {
+    // редкость: новичок часто, обычный редко, профи очень редко
+    const r = Math.random();
+    let type, skill, color, hat;
+    if (r < 0.7) { type = 'Новичок'; skill = 0.15 + Math.random()*0.15; }
+    else if (r < 0.95) { type = 'Обычный'; skill = 0.45 + Math.random()*0.2; }
+    else { type = 'Профи'; skill = 0.85 + Math.random()*0.15; }
+
+    color = COLORS[Math.floor(Math.random()*COLORS.length)];
+    hat = Math.random() < 0.5 ? Math.floor(Math.random()*6) : 0;
+
+    let x, y, tries = 0;
+    do {
+      x = Math.random() * (WORLD_W - 300) + 150;
+      y = Math.random() * (WORLD_H - 300) + 150;
+      tries++;
+    } while (tries < 30 && Math.hypot(x - g.player.x, y - g.player.y) < 350);
+
+    const bot = makeSnake(x, y, color, hat, true, `Бот-${i+1}`, 8 + Math.floor(Math.random()*8));
+    bot.skill = skill;
+    bot.type = type;
+    bot.speed = 1.8 + skill * 1.2;
+    bot.baseSpeed = bot.speed;
+    g.bots.push(bot);
+  }
+}
+
+// ============ ВВОД ============
+document.addEventListener('keydown', e => {
+  if (!game) return;
+  game.keys[e.key.toLowerCase()] = true;
+  if (e.key === 'Shift') game.boost = true;
+  if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
+});
+document.addEventListener('keyup', e => {
+  if (!game) return;
+  game.keys[e.key.toLowerCase()] = false;
+  if (e.key === 'Shift') game.boost = false;
+});
+
+// мобильный джойстик
+let joyActive = false, joyId = null, joyStart = {x:0,y:0};
+const joyBase = document.getElementById('joyBase');
+const joyKnob = document.getElementById('joyKnob');
+const boostBtnMobile = document.getElementById('boostBtnMobile');
+
+function setupMobileControls() {
+  if (platform === 'mobile') {
+    joyBase.style.display = 'block';
+    boostBtnMobile.style.display = 'flex';
+  } else {
+    joyBase.style.display = 'none';
+    boostBtnMobile.style.display = 'none';
+  }
+}
+
+joyBase.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (!game) return;
+  const t = e.changedTouches[0];
+  joyId = t.identifier;
+  const rect = joyBase.getBoundingClientRect();
+  joyStart = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+  joyActive = true;
+  updateJoy(t.clientX, t.clientY);
+}, { passive: false });
+
+document.addEventListener('touchmove', e => {
+  if (!joyActive || !game) return;
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyId) {
+      e.preventDefault();
+      updateJoy(t.clientX, t.clientY);
+    }
+  }
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  if (!game) return;
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyId) {
+      joyActive = false;
+      joyId = null;
+      joyKnob.style.transform = 'translate(-50%, -50%)';
+      if (game) game.mobileDir = { x: 0, y: 0 };
+    }
+  }
+});
+
+function updateJoy(cx, cy) {
+  const dx = cx - joyStart.x;
+  const dy = cy - joyStart.y;
+  const maxR = 55;
+  const dist = Math.hypot(dx, dy);
+  const clamped = Math.min(dist, maxR);
+  const ang = Math.atan2(dy, dx);
+  const kx = Math.cos(ang) * clamped;
+  const ky = Math.sin(ang) * clamped;
+  joyKnob.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
+  if (dist > 12) {
+    game.mobileDir = { x: dx / dist, y: dy / dist };
+  } else {
+    game.mobileDir = { x: 0, y: 0 };
+  }
+}
+
+boostBtnMobile.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (game) game.boost = true;
+}, { passive: false });
+boostBtnMobile.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (game) game.boost = false;
+}, { passive: false });
+
+// ============ ОБНОВЛЕНИЕ ============
+function updateGame(dt) {
+  if (!game || game.isDead) return;
+  const g = game;
+  g.time += dt;
+  g.floorTimer += dt;
+  if (g.floorTimer >= 30) {
+    g.floorTimer = 0;
+    g.floorHue = (g.floorHue + 60 + Math.random()*60) % 360;
+  }
+
+  updatePlayer(g, dt);
+  g.bots.forEach(b => updateBot(g, b, dt));
+
+  // коллизии
+  checkCollisions(g);
+
+  // еда (боты и игрок едят)
+  eatFood(g);
+
+  // частицы
+  updateParticles(g, dt);
+
+  // отображение
+  updateHUD(g);
+}
+
+function updatePlayer(g, dt) {
+  const p = g.player;
+  if (!p.alive) return;
+
+  let dir = { x: 0, y: 0 };
+  if (platform === 'pc') {
+    if (g.keys['w'] || g.keys['ц'] || g.keys['arrowup']) dir.y -= 1;
+    if (g.keys['s'] || g.keys['ы'] || g.keys['arrowdown']) dir.y += 1;
+    if (g.keys['a'] || g.keys['ф'] || g.keys['arrowleft']) dir.x -= 1;
+    if (g.keys['d'] || g.keys['в'] || g.keys['arrowright']) dir.x += 1;
+  } else {
+    dir = g.mobileDir;
+  }
+
+  if (dir.x !== 0 || dir.y !== 0) {
+    const targetAngle = Math.atan2(dir.y, dir.x);
+    // плавный поворот
+    let diff = targetAngle - p.angle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    p.angle += diff * Math.min(1, dt * 10);
+    p.targetAngle = targetAngle;
+  }
+
+  // ускорение: в 2 раза быстрее, ничего не тратит
+  const boosting = g.boost;
+  p.boosting = boosting;
+  const speed = p.baseSpeed * (boosting ? 1.9 : 1);
+
+  moveSnake(p, speed, dt);
+}
+
+function updateBot(g, b, dt) {
+  if (!b.alive) return;
+  b.thinkTimer -= dt;
+  if (b.thinkTimer <= 0) {
+    b.thinkTimer = 0.15 + Math.random() * 0.25;
+    aiThink(g, b);
+  }
+  let speed = b.speed;
+  // иногда ускоряются (профи чаще)
+  if (b.boosting) speed *= 1.6;
+  moveSnake(b, speed, dt);
+}
+
+function aiThink(g, b) {
+  const skill = b.skill;
+  // найти ближайшую еду
+  let bestFood = null;
+  let bestDist = Infinity;
+  for (const f of g.foods) {
+    const d = Math.hypot(f.x - b.x, f.y - b.y);
+    if (d < bestDist) { bestDist = d; bestFood = f; }
+  }
+  // найти ближайшую змейку-цель (для агрессивных)
+  let bestEnemy = null;
+  let bestEnemyDist = Infinity;
+  if (b.personality === 'aggressive') {
+    const all = [g.player, ...g.bots];
+    for (const o of all) {
+      if (o === b || !o.alive) continue;
+      const d = Math.hypot(o.x - b.x, o.y - b.y);
+      if (d < bestEnemyDist && d < 600) { bestEnemyDist = d; bestEnemy = o; }
+    }
+  }
+
+  let targetAngle = b.angle;
+  const rand = Math.random();
+
+  // выбор цели
+  if (b.personality === 'aggressive' && bestEnemy && rand < skill) {
+    // пытаемся перерезать путь
+    targetAngle = Math.atan2(bestEnemy.y - b.y, bestEnemy.x - b.x);
+    if (b.skill > 0.8) {
+      // профи предсказывает движение цели
+      const ea = bestEnemy.angle;
+      const predX = bestEnemy.x + Math.cos(ea) * 60;
+      const predY = bestEnemy.y + Math.sin(ea) * 60;
+      targetAngle = Math.atan2(predY - b.y, predX - b.x);
+    }
+    // ускоряемся если близко
+    if (bestEnemyDist < 200 && b.skill > 0.6) b.boosting = true;
+    else b.boosting = false;
+  } else if (bestFood && bestDist < 800 && rand < 0.3 + skill * 0.6) {
+    targetAngle = Math.atan2(bestFood.y - b.y, bestFood.x - b.x);
+    b.boosting = false;
+  } else {
+    // бродим
+    b.aiWander += (Math.random() - 0.5) * 0.8;
+    targetAngle = b.aiWander;
+    b.boosting = false;
+  }
+
+  // избегание стен (важно!)
+  const margin = 200;
+  if (b.x < margin) targetAngle = 0;
+  else if (b.x > WORLD_W - margin) targetAngle = Math.PI;
+  if (b.y < margin) targetAngle = Math.PI / 2;
+  else if (b.y > WORLD_H - margin) targetAngle = -Math.PI / 2;
+
+  // избегание хвостов противников (для умных)
+  if (b.skill > 0.4) {
+    const danger = findDangerAngle(g, b);
+    if (danger !== null) {
+      // поворачиваем от опасности
+      let diff = danger - b.angle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      targetAngle = b.angle + diff + Math.PI * 0.6;
+    }
+  }
+
+  b.targetAngle = targetAngle;
+  // плавный поворот
+  let diff = targetAngle - b.angle;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  b.angle += diff * Math.min(1, 0.15 + b.skill * 0.25);
+}
+
+function findDangerAngle(g, b) {
+  const lookAhead = 80 + b.skill * 80;
+  const checkX = b.x + Math.cos(b.angle) * lookAhead;
+  const checkY = b.y + Math.sin(b.angle) * lookAhead;
+  const all = [g.player, ...g.bots];
+  for (const o of all) {
+    if (o === b || !o.alive) continue;
+    for (const s of o.segments) {
+      if (Math.hypot(s.x - checkX, s.y - checkY) < 35) {
+        return Math.atan2(checkY - b.y, checkX - b.x);
+      }
+    }
+  }
+  return null;
+}
+
+function moveSnake(s, speed, dt) {
+  // движение головы
+  s.x += Math.cos(s.angle) * speed * 60 * dt;
+  s.y += Math.sin(s.angle) * speed * 60 * dt;
+
+  // стены — смерть (кроме игрока? нет, все умирают)
+  const wallMargin = 10;
+  if (s.x < -20 || s.x > WORLD_W + 20 || s.y < -20 || s.y > WORLD_H + 20) {
+    if (s.alive) killSnake(null, s);
+    return;
+  }
+  s.x = Math.max(-20, Math.min(WORLD_W + 20, s.x));
+  s.y = Math.max(-20, Math.min(WORLD_H + 20, s.y));
+
+  // добавляем новый сегмент
+  const last = s.segments[0];
+  const dist = Math.hypot(s.x - last.x, s.y - last.y);
+  const spacing = GRID * 0.5;
+  if (dist > spacing) {
+    s.segments.unshift({ x: s.x, y: s.y });
+    if (s.segments.length > s.length) s.segments.pop();
+  }
+}
+
+function checkCollisions(g) {
+  const all = [g.player, ...g.bots].filter(s => s.alive);
+  for (const s of all) {
+    // столкновение с чужими хвостами
+    for (const o of all) {
+      if (o === s) continue;
+      // проверяем сегменты, начиная с 5-го (голова тоже опасна, но чуть ниже)
+      for (let i = 2; i < o.segments.length; i++) {
+        const seg = o.segments[i];
+        if (Math.hypot(seg.x - s.x, seg.y - s.y) < GRID * 0.55) {
+          killSnake(o, s);
+          return;
+        }
+      }
+    }
+  }
+}
+
+function killSnake(killer, victim) {
+  if (!victim.alive) return;
+  victim.alive = false;
+  victim.dead = true;
+
+  // выпадают все точки = score
+  const drop = Math.min(victim.score, 80);
+  const dropCount = Math.max(3, Math.floor(drop / 2));
+  for (let i = 0; i < dropCount; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const dist = Math.random() * 60;
+    game.deadBodies.push({
+      x: victim.x + Math.cos(ang) * dist,
+      y: victim.y + Math.sin(ang) * dist,
+      r: 5,
+      score: 1,
+      color: randomRainbow(),
+      wobble: Math.random() * Math.PI * 2
+    });
+  }
+  // брызги
+  for (let i = 0; i < 25; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 60 + Math.random() * 180;
+    game.particles.push({
+      x: victim.x, y: victim.y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      life: 1, maxLife: 1,
+      color: victim.color,
+      r: 3 + Math.random() * 4
+    });
+  }
+
+  if (victim.isPlayer) {
+    gPlayerDead();
+  } else {
+    if (killer && killer.isPlayer) {
+      game.playerKills++;
+      game.player.score += 5; // бонус за убийство
+      game.player.length += 1;
+    }
+    // респавн бота через 3 сек
+    victim.respawnTimer = 3;
+  }
+}
+
+function gPlayerDead() {
+  game.isDead = true;
+  const g = game;
+  const ov = document.getElementById('overlay');
+  document.getElementById('overlayTitle').textContent = '💀 Ты погиб';
+  document.getElementById('ovScore').textContent = `Очки: ${Math.floor(g.player.score)}`;
+  document.getElementById('ovLength').textContent = `Длина: ${g.player.length}`;
+  document.getElementById('ovKills').textContent = `Убийств: ${g.playerKills}`;
+  // место в рейтинге
+  const ranking = [g.player, ...g.bots].filter(s => s.alive || s.isPlayer).sort((a,b)=>b.score-a.score);
+  const place = ranking.findIndex(s => s === g.player) + 1;
+  document.getElementById('ovRank').textContent = `Место: ${place} из ${ranking.length}`;
+  ov.classList.add('active');
+}
+
+function eatFood(g) {
+  const eaters = [g.player, ...g.bots].filter(s => s.alive);
+  const allFoods = [...g.foods, ...g.deadBodies];
+
+  for (let i = allFoods.length - 1; i >= 0; i--) {
+    const f = allFoods[i];
+    let eaten = false;
+    for (const s of eaters) {
+      const d = Math.hypot(f.x - s.x, f.y - s.y);
+      if (d < f.r + GRID * 0.5) {
+        // съедено
+        s.score += f.score;
+        s.length = Math.floor(10 + s.score * 0.5);
+        // растим сегменты
+        while (s.segments.length < s.length) {
+          const last = s.segments[s.segments.length - 1];
+          s.segments.push({ x: last.x, y: last.y });
+        }
+        // брызги
+        for (let k = 0; k < 4; k++) {
+          const ang = Math.random() * Math.PI * 2;
+          g.particles.push({
+            x: f.x, y: f.y,
+            vx: Math.cos(ang) * 60, vy: Math.sin(ang) * 60,
+            life: 0.6, maxLife: 0.6,
+            color: f.color, r: 3
+          });
+        }
+        eaten = true;
+        break;
+      }
+    }
+    if (eaten) {
+      // удаляем из нужного массива
+      if (i < g.foods.length) g.foods.splice(i, 1);
+      else g.deadBodies.splice(i - g.foods.length, 1);
+    }
+  }
+
+  // поддерживаем кол-во еды
+  while (g.foods.length < 220) g.foods.push(makeFood());
+}
+
+function updateParticles(g, dt) {
+  for (let i = g.particles.length - 1; i >= 0; i--) {
+    const p = g.particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= 0.94;
+    p.vy *= 0.94;
+    p.life -= dt;
+    if (p.life <= 0) g.particles.splice(i, 1);
+  }
+}
+
+function updateHUD(g) {
+  document.getElementById('hudScore').textContent = `Очки: ${Math.floor(g.player.score)}`;
+  document.getElementById('hudLength').textContent = `Длина: ${g.player.length}`;
+
+  // рейтинг: все + игрок
+  const all = [g.player, ...g.bots].sort((a,b)=>b.score - a.score);
+  const lb = document.getElementById('leaderboard');
+  let html = '<b>🏆 Рейтинг</b><br>';
+  all.slice(0, 6).forEach((s, i) => {
+    const name = s.isPlayer ? 'Ты' : s.name.replace('Бот-','Б');
+    const marker = s.isPlayer ? '👉 ' : '';
+    html += `<div style="color:${s.color}">${marker}${i+1}. ${name}: ${Math.floor(s.score)}</div>`;
+  });
+  lb.innerHTML = html;
+}
+
+// ============ РЕНДЕР ============
+function render() {
+  if (!game) return;
+  const g = game;
+  const p = g.player;
+
+  // размер canvas
+  const cw = canvas.width = window.innerWidth;
+  const ch = canvas.height = window.innerHeight;
+
+  // камера следует за игроком
+  camera.x = p.x - cw / 2;
+  camera.y = p.y - ch / 2;
+
+  // фон
+  ctx.fillStyle = `hsl(${g.floorHue}, 40%, 8%)`;
+  ctx.fillRect(0, 0, cw, ch);
+
+  // сетка поля
+  ctx.strokeStyle = `hsla(${g.floorHue}, 60%, 40%, 0.15)`;
+  ctx.lineWidth = 1;
+  const gridSize = 80;
+  const startX = -((camera.x % gridSize) + gridSize) % gridSize;
+  const startY = -((camera.y % gridSize) + gridSize) % gridSize;
+  for (let x = startX; x < cw; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, ch); ctx.stroke();
+  }
+  for (let y = startY; y < ch; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke();
+  }
+
+  // границы мира
+  ctx.strokeStyle = `hsla(${g.floorHue}, 90%, 60%, 0.5)`;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(-camera.x, -camera.y, WORLD_W, WORLD_H);
+
+  // точки
+  for (const f of g.foods) {
+    const sx = f.x - camera.x;
+    const sy = f.y - camera.y;
+    if (sx < -50 || sx > cw + 50 || sy < -50 || sy > ch + 50) continue;
+    const wob = Math.sin(g.time * 3 + f.wobble) * 2;
+    ctx.beginPath();
+    ctx.arc(sx, sy, f.r + wob * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = f.color;
+    ctx.shadowColor = f.color;
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  // выпавшие точки
+  for (const f of g.deadBodies) {
+    const sx = f.x - camera.x;
+    const sy = f.y - camera.y;
+    if (sx < -50 || sx > cw + 50 || sy < -50 || sy > ch + 50) continue;
+    ctx.beginPath();
+    ctx.arc(sx, sy, f.r, 0, Math.PI * 2);
+    ctx.fillStyle = f.color;
+    ctx.shadowColor = f.color;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // змейки
+  const allSnakes = [...g.bots, g.player].sort((a,b) => a.isPlayer ? 1 : -1);
+  for (const s of allSnakes) {
+    if (!s.alive) continue;
+    drawSnake(s, cw, ch);
+  }
+
+  // частицы
+  for (const p2 of g.particles) {
+    const sx = p2.x - camera.x;
+    const sy = p2.y - camera.y;
+    ctx.globalAlpha = p2.life / p2.maxLife;
+    ctx.beginPath();
+    ctx.arc(sx, sy, p2.r * (p2.life/p2.maxLife), 0, Math.PI * 2);
+    ctx.fillStyle = p2.color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawSnake(s, cw, ch) {
+  // сегменты (сзади вперёд)
+  for (let i = s.segments.length - 1; i >= 0; i--) {
+    const seg = s.segments[i];
+    const sx = seg.x - camera.x;
+    const sy = seg.y - camera.y;
+    if (sx < -60 || sx > cw + 60 || sy < -60 || sy > ch + 60) continue;
+    const t = i / s.segments.length;
+    const r = GRID * 0.55 * (1 - t * 0.45);
+    // цвет с небольшим затемнением к хвосту
+    const c = shadeColor(s.color, -t * 25);
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fillStyle = c;
+    ctx.shadowColor = s.color;
+    ctx.shadowBlur = i === 0 ? 15 : 6;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // полоска-чешуйка
+    if (i > 0 && i % 2 === 0) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, r * 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = shadeColor(s.color, 20);
+      ctx.globalAlpha = 0.4;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  // глаза на голове
+  const head = s.segments[0];
+  const hx = head.x - camera.x;
+  const hy = head.y - camera.y;
+  const eyeOffset = GRID * 0.28;
+  const eyeR = GRID * 0.16;
+  const perpX = Math.cos(s.angle + Math.PI/2);
+  const perpY = Math.sin(s.angle + Math.PI/2);
+  const fwdX = Math.cos(s.angle);
+  const fwdY = Math.sin(s.angle);
+  const e1x = hx + perpX * eyeOffset + fwdX * 5;
+  const e1y = hy + perpY * eyeOffset + fwdY * 5;
+  const e2x = hx - perpX * eyeOffset + fwdX * 5;
+  const e2y = hy - perpY * eyeOffset + fwdY * 5;
+  ctx.beginPath(); ctx.arc(e1x, e1y, eyeR, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.beginPath(); ctx.arc(e2x, e2y, eyeR, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.beginPath(); ctx.arc(e1x + fwdX*2, e1y + fwdY*2, eyeR*0.55, 0, Math.PI*2); ctx.fillStyle='#111'; ctx.fill();
+  ctx.beginPath(); ctx.arc(e2x + fwdX*2, e2y + fwdY*2, eyeR*0.55, 0, Math.PI*2); ctx.fillStyle='#111'; ctx.fill();
+
+  // шапочка
+  if (s.hat && s.hat > 0) {
+    const hat = HATS[s.hat];
+    const hatX = hx + fwdX * 4;
+    const hatY = hy - GRID * 0.9 + fwdY * 4;
+    ctx.font = `${GRID * 1.3}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(hat.emoji, hatX, hatY);
+  }
+
+  // ник
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = 0.85;
+  ctx.fillText(s.isPlayer ? 'Ты' : s.name, hx, hy - GRID * 1.6);
+  ctx.globalAlpha = 1;
+}
+
+function shadeColor(hex, percent) {
+  // hex может быть в формате #rrggbb
+  if (hex.startsWith('hsl')) {
+    // для hsl просто вернём с изменённой светлотой
+    const m = hex.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+    if (m) {
+      const l = Math.max(10, Math.min(90, parseInt(m[3]) + percent));
+      return `hsl(${m[1]}, ${m[2]}%, ${l}%)`;
+    }
+    return hex;
+  }
+  let r, g, b;
+  if (hex.length === 4) {
+    r = parseInt(hex[1]+hex[1],16); g = parseInt(hex[2]+hex[2],16); b = parseInt(hex[3]+hex[3],16);
+  } else {
+    r = parseInt(hex.slice(1,3),16); g = parseInt(hex.slice(3,5),16); b = parseInt(hex.slice(5,7),16);
+  }
+  r = Math.max(0, Math.min(255, r + Math.round(255 * percent/100)));
+  g = Math.max(0, Math.min(255, g + Math.round(255 * percent/100)));
+  b = Math.max(0, Math.min(255, b + Math.round(255 * percent/100)));
+  return '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+// ============ ЦИКЛ ============
+function loop(now) {
+  if (!game) return;
+  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  lastTime = now;
+
+  if (!game.isDead) {
+    updateGame(dt);
+  }
+  render();
+
+  // респавн ботов
+  game.bots.forEach(b => {
+    if (!b.alive) {
+      b.respawnTimer -= dt;
+      if (b.respawnTimer <= 0) {
+        // новый бот
+        const r = Math.random();
+        let skill;
+        if (r < 0.7) skill = 0.15 + Math.random()*0.15;
+        else if (r < 0.95) skill = 0.45 + Math.random()*0.2;
+        else skill = 0.85 + Math.random()*0.15;
+        const color = COLORS[Math.floor(Math.random()*COLORS.length)];
+        const hat = Math.random() < 0.5 ? Math.floor(Math.random()*6) : 0;
+        const newBot = makeSnake(
+          Math.random() * (WORLD_W - 400) + 200,
+          Math.random() * (WORLD_H - 400) + 200,
+          color, hat, true, b.name, 8 + Math.floor(Math.random()*8)
+        );
+        newBot.skill = skill;
+        newBot.speed = 1.8 + skill * 1.2;
+        newBot.baseSpeed = newBot.speed;
+        // заменяем в массиве
+        const idx = game.bots.indexOf(b);
+        game.bots[idx] = newBot;
+      }
+    }
+  });
+
+  animationId = requestAnimationFrame(loop);
+}
+
+// ============ УПРАВЛЕНИЕ ИГРОЙ ============
+function startGame() {
+  showScreen('gameScreen');
+  setupMobileControls();
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  game = createGame();
+  lastTime = performance.now();
+  if (animationId) cancelAnimationFrame(animationId);
+  animationId = requestAnimationFrame(loop);
+}
+
+function restartGame() {
+  document.getElementById('overlay').classList.remove('active');
+  if (animationId) cancelAnimationFrame(animationId);
+  game = createGame();
+  lastTime = performance.now();
+  animationId = requestAnimationFrame(loop);
+}
+
+function backToMenuFromGame() {
+  document.getElementById('overlay').classList.remove('active');
+  if (animationId) cancelAnimationFrame(animationId);
+  game = null;
+  showScreen('menuScreen');
+}
+
+window.addEventListener('resize', () => {
+  if (game) {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+});
+</script>
+</body>
+</html>
